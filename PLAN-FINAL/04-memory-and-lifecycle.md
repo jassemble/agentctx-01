@@ -24,6 +24,8 @@ The brain implements all **4 channels of memory** from the Ralph Wiggum (compoun
 
 ## Decision Tracking — The Self-Learning Loop
 
+> **Note**: This section summarizes the decision tracking system. For the full detailed specification (decision structure, consolidation agent, SDLC integration, self-improve mechanism), see [[09-decision-tracking-and-learning]].
+
 ### The Core Loop
 
 ```
@@ -152,9 +154,9 @@ From the lifecycle hooks architecture research, the brain is made **session-awar
 
 | Hook | Trigger | What the Brain Does |
 |---|---|---|
-| **SessionStart** | Agent starts new session | Load protocol.md + `decisions.md` (consolidated) + 5 most recent log.md entries + relevant brain pages based on task type |
-| **UserPromptSubmit** | User sends a prompt | Store the query for future context matching (what questions were asked about which topics) |
-| **PostToolUse** | Agent modifies a file | If file is in `.ctx/`, validate the change (no accidental deletion, human-approved content protected). If file is in source code, mark related modules as potentially stale |
+| **SessionStart** | Agent starts new session | Load protocol.md + `decisions.md` (consolidated) + 5 most recent log.md entries + relevant brain pages based on task type. **Skill routing**: read `.ctx/skills/manifest.json` detected_stack → pre-load relevant skill references into session context (stack context signal) |
+| **UserPromptSubmit** | User sends a prompt | Store the query for future context matching. **Skill routing**: match prompt against installed skills' `trigger_phrases` → set active skill for this interaction (intent match signal). No explicit invocation needed — if the user says "write tests for auth", the testing skill activates automatically |
+| **PostToolUse** | Agent modifies a file | If file is in `.ctx/`, validate the change (no accidental deletion, human-approved content protected). If file is in source code, mark related modules as potentially stale AND inject **breadcrumbs** — local context hints showing the module, related entities, and relevant concept links for the file being edited (Navigation Interface layer). **Skill routing**: match edited/read file path against installed skills' `paths` globs → inject matched skill's conventions as breadcrumb context (file context signal — highest priority) |
 | **Stop** | Agent pauses | Checkpoint current task progress to status.md |
 | **SessionEnd** | Agent finishes session | Persist any ephemeral observations to log.md, record any new decisions made this session, update status.md, trigger lightweight sync if source files changed |
 

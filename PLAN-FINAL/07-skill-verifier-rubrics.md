@@ -17,6 +17,9 @@ This checklist lives in `.ctx/references/lint-checklist.md` (swappable rubric). 
 | Orphan concepts | Concept page has >=1 inbound wikilink | INFO | Yes — backlink grep |
 | Stale log | Log last entry is <=7 days old | INFO | Yes — date comparison |
 | Missing verification | status.md has a verification entry for every module | WARNING | Yes — status.md check |
+| Low-confidence edges | INFERRED edges with confidence < 0.5 flagged for human review | INFO | Yes — frontmatter confidence field |
+| EXTRACTED edge validity | EXTRACTED edges resolve to actual code references (import/call) | WARNING | Yes — AST cross-check |
+| Community map staleness | community_map.md clusters match current module relationships | WARNING | Partial — Leiden re-run comparison |
 
 Lint output: structured report grouped by severity (ERROR/WARNING/INFO) with a score and top 3 recommendations.
 
@@ -59,6 +62,7 @@ Lint output: structured report grouped by severity (ERROR/WARNING/INFO) with a s
 | Tests use production-like data (not hand-crafted fixtures) | ERROR |
 | Edge cases covered (not just happy path) | WARNING |
 | No flaky tests (repeated runs pass) | WARNING |
+| UI changes have headless browser automation tests (Playwright/Puppeteer) with machine-verifiable acceptance criteria (screenshots, DOM assertions) | WARNING |
 | Coverage meets team-defined threshold | INFO |
 
 ### Deployment Verifier

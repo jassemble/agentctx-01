@@ -8,18 +8,26 @@ The Generator and Verifier are **separate** agents. Self-review is less reliable
 
 ### Agent 1: Brain Generator Agent
 
-**Role**: Writes/maintains brain pages from facts.
+**Role**: Writes/maintains brain pages from brain's graph output.
 
 **Pattern**: Generator + Pipeline
 
+**Reads from brain**:
+- `graph.json` — nodes (entities, functions, classes), edges (imports, calls, semantic), communities
+- `GRAPH_REPORT.md` — god nodes, surprising connections, knowledge gaps, ambiguous edges
+- `wiki/` — community articles, god node articles
+
 **Generates**:
-- Module docs from AST scan results
-- Entity pages from function signatures, imports, and code structure
-- Concept proposals (marked PROPOSED) from cross-module patterns
-- Routing table entries from newly detected keywords
-- Cross-links between modules, entities, and concepts
+- Module docs from brain nodes (file_type=code, grouped by source_file directory)
+- Entity pages from brain nodes (classes, services, models) with confidence-scored edges
+- Concept proposals (marked PROPOSED) from brain's cross-community patterns and hyperedges
+- Routing table entries from brain's god node labels + community labels
+- Cross-links between modules, entities, and concepts using brain edge data
 
 **Does NOT**:
+- Run AST extraction (brain handles this)
+- Run semantic extraction (brain handles this)
+- Run community detection (brain handles this)
 - Make architecture decisions
 - Auto-create concept pages without PROPOSED status
 - Verify its own work (separate Verifier handles this)
@@ -49,6 +57,9 @@ The Generator and Verifier are **separate** agents. Self-review is less reliable
 | Orphan concepts | Concept has >=1 inbound link | INFO | Yes — backlink grep |
 | Stale log | Log's last entry <=7 days old | INFO | Yes — date comparison |
 | Missing verification | Source pages exist without verification status in status.md | WARNING | Yes — status.md check |
+| Low-confidence edges | INFERRED edges with confidence < 0.5 flagged for human review | INFO | Yes — frontmatter confidence field |
+| EXTRACTED edge validity | EXTRACTED edges resolve to actual code references (import/call) | WARNING | Yes — AST cross-check |
+| Community map staleness | community_map.md clusters match current module relationships | WARNING | Partial — Leiden re-run |
 
 **Output Format**: `brain-lint-report.md` — structured report with: Summary → Findings (grouped by severity) → Score → Top 3 Recommendations
 
@@ -63,9 +74,11 @@ The Generator and Verifier are **separate** agents. Self-review is less reliable
 **Pattern**: Inversion + Generator (follows the Inversion pattern)
 
 **How it works**:
-1. Read all entity and module pages
-2. Identify cross-cutting themes (e.g., "5 modules use provider-switching pattern")
-3. **DO NOT** create concept pages — instead, propose them:
+1. Read brain's `GRAPH_REPORT.md` — god nodes, surprising connections, hyperedges, knowledge gaps
+2. Read brain's community articles (`.ctx/graph/wiki/`) for cross-cluster themes
+3. Query brain MCP: `god_nodes`, `get_community`, `shortest_path` for deeper exploration
+4. Identify cross-cutting themes (e.g., "5 modules use provider-switching pattern" — visible as a hyperedge in graph.json)
+5. **DO NOT** create concept pages — instead, propose them:
    ```
    PROPOSAL: .ctx/concepts/provider-switching.md
    Evidence: modules/auth.md, modules/email.md, modules/sms.md
@@ -88,46 +101,58 @@ The Generator and Verifier are **separate** agents. Self-review is less reliable
 
 ### Agent 4: Brain Maintenance Agent
 
-**Role**: Orchestrates the full 4-phase sync pipeline on commit.
+**Role**: Orchestrates the full 4-phase sync pipeline on commit. Also handles skill re-detection on sync — if new stack signals appear (e.g., a `Dockerfile` was added), it suggests installing the matching skill.
 
 **Pattern**: Pipeline (coordinates Generator + Verifier)
 
 **Trigger**: Git commit (via settings.json hook) or `/brain-sync` slash command.
 
+**Skill detection on sync**: After Phase 1 (EXTRACT), the agent runs `brain detect-skills --quiet` to compare the current project structure against `.ctx/skills/manifest.json`. If new signals are found (new `go.mod`, new `Dockerfile`, etc.), it prints a 1-line suggestion — "Ask First", not auto-install. This same check also runs per-prompt via a `UserPromptSubmit` hook (~5ms, zero API tokens).
+
 ## The 4-Phase Sync Pipeline
 
-The sync pipeline separates investigation from implementation (task explosion pattern) and Generator from Verifier:
+The sync pipeline separates investigation from implementation (task explosion pattern) and Generator from Verifier. **Phase 1 delegates to brain** for extraction and clustering:
 
 ```
-Phase 1: INVESTIGATE (Tool Wrapper)
-  - Run AST scan on changed directories only (context isolation)
-  - Run git diff against last known state (hash comparison from status.md)
-  - Parse diff -> classify: new files, changed functions, deleted directories
-  - Cross-reference against existing modules/entities -> identify what needs changes
-  - Exit criteria: structured change map complete
-  Gate: if no changes -> skip to update phase (lightweight sync only)
+Phase 1: EXTRACT (brain — Tool Wrapper)
+  - Run `brain . --update` (incremental — only changed files re-extracted)
+  - brain handles: AST extraction (25 languages), semantic extraction (LLM),
+    Leiden clustering, confidence scoring, god node analysis
+  - Outputs: updated graph.json, graph.html, GRAPH_REPORT.md, wiki/
+  - brain's cache (SHA256 per-file) ensures unchanged files cost 0 tokens
+  - Exit criteria: graph.json updated, GRAPH_REPORT.md regenerated
+  Gate: if no files changed (brain manifest check) -> skip to lightweight sync
 
-Phase 2: UPDATE (Generator)
-  - For each change in the map:
-    - Create/update module docs (hash changed -> full regeneration)
-    - Create/update entity pages with wikilinks to related modules
-    - Flag concepts whose description no longer matches code (hash mismatch)
-    - Propose new concept pages if new domain detected (marked PROPOSED)
+Phase 2: UPDATE (Brain Generator)
+  - Read brain outputs (graph.json nodes/edges, GRAPH_REPORT.md, wiki/)
+  - For each new/changed node in graph:
+    - Create/update module docs from brain file-level nodes
+    - Create/update entity pages from brain class/service/function nodes
+    - Populate wikilinks from brain edges (with confidence scores)
+    - Flag concepts whose description no longer matches code
+    - Propose new concept pages from brain's cross-community patterns,
+      hyperedges, and surprising connections (marked PROPOSED)
+  - Populate community_map.md from brain cluster output (with cohesion scores)
   - Exit criteria: all changed pages touched, unchanged pages verified stable
   Gate: if concept proposed -> mark "PROPOSED" for human review
   Gate: if entity created -> add to status.md tracking
 
-Phase 3: VERIFY (Reviewer — separate from Generator!)
-  - Deterministic checks: wikilink resolution, hash comparison, token budgets
+Phase 3: VERIFY (Brain Verifier — separate from Generator!)
+  - Deterministic checks: wikilink resolution, token budgets, edge confidence
+  - Cross-reference .ctx/ pages against graph.json:
+    - EXTRACTED edges must match actual brain AST data
+    - INFERRED edges with confidence < 0.5 flagged for review
+    - AMBIGUOUS edges from GRAPH_REPORT.md surfaced
   - Heuristic checks: pattern drift, contradiction detection (separate agent)
+  - Check brain GRAPH_REPORT.md for knowledge gaps, ambiguous edges
   - If any ERROR found: fix-and-retry (MAX 3 retries)
   - If still failing after 3 retries: stop, report "sync blocked: [reason]"
   - Exit criteria: all checks pass or flagged for manual review
   Gate: no errors -> proceed to commit; errors -> fix-and-retry
 
 Phase 4: COMMIT (Pipeline)
-  - Update routing.md with new keywords from changed modules/entities
-  - Update index.md catalog (add new pages, update token counts)
+  - Update routing.md with keywords from brain god nodes + community labels
+  - Update index.md catalog (fingerprints from graph.json node attributes)
   - Append structured entry to log.md:
     ## [YYYY-MM-DD] sync
     Status: complete | blocked
@@ -135,8 +160,10 @@ Phase 4: COMMIT (Pipeline)
     New entities: Y
     Updated entities: Z
     Concept proposals: N
+    Graph: N nodes, M edges, K communities
+    Confidence: X% EXTRACTED, Y% INFERRED, Z% AMBIGUOUS
   - Update status.md (fresh/stale/unenriched/verified counts)
-  - Distill patterns.md if cross-module patterns detected
+  - Distill patterns.md from brain's cross-community patterns + hyperedges
   - Exit criteria: all metadata updated, log entry persisted
 ```
 

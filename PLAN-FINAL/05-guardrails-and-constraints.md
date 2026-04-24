@@ -109,8 +109,18 @@ From the cognitive limits research:
 
 3. **Ambient anxiety tax eliminated**: The brain must give a single definitive answer. The Verifier produces pass/fail, not "here are 4 possible issues."
 
-4. **Productivity paradox** (METR RCT: 19% slower): The brain must track **actual verification time**, not just "sync completed." Success = code changed AND verified correct.
+4. **Productivity paradox**: Multiple studies converge on the same finding:
+   - METR RCT (2025): 16 experienced developers, 246 tasks — AI made them **19% slower** while they believed they were 20% faster
+   - Faros AI (2025): 10,000+ developers — **zero measurable DORA improvement** despite 75% AI adoption
+   - Vila's interpretation: these failure modes are structurally worse in multi-agent systems because mistakes **compound across tool calls and agent boundaries**
 
-5. **Terminology convention**: The agent refers to the user as "human partner" — deliberate psychological framing that affects agent behavior and collaborative quality.
+   The brain must track **actual verification time**, not just "sync completed." Success = code changed AND verified correct. The brain's role is making failures **visible, testable, and fixable**.
+
+5. **Knowledge paradox**: AI helps experienced developers more than juniors (knowledge-paradox research). The framework should account for expertise differences:
+   - Senior devs: benefit from the brain's cross-referencing and decision history — they can evaluate proposals faster
+   - Junior devs: need the brain's progressive disclosure more (summaries before details), but are more susceptible to trusting INFERRED connections or auto-generated content uncritically
+   - Design implication: concept proposals (PROPOSED status) and AMBIGUOUS edges serve as speed bumps that protect less experienced users from accepting hallucinated context
+
+6. **Terminology convention**: The agent refers to the user as "human partner" — deliberate psychological framing that affects agent behavior and collaborative quality.
 
 See also: [[08-anti-patterns]] for what we're NOT building, [[07-skill-verifier-rubrics]] for the concrete rubric items.
