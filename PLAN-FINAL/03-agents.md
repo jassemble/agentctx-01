@@ -167,7 +167,42 @@ Phase 4: COMMIT (Pipeline)
   - Exit criteria: all metadata updated, log entry persisted
 ```
 
-**Kill criteria**: If sync stuck after 3 retries, stop and report "sync blocked: [reason]" rather than silently burning tokens.
+### Error Recovery & Escalation Ladder
+
+The sync pipeline uses a 4-tier escalation strategy — not just "stop and report." Each tier is progressively more expensive and human-involving:
+
+```
+Tier 1: FIX-AND-RETRY (automatic)
+  - Verifier finds ERROR → Generator fixes → re-verify
+  - MAX 3 retries per gate
+  - Cost: tokens only, no human time
+
+Tier 2: FORCED REFLECTION (automatic, after 3 retries)
+  - Agent pauses and answers: "What failed? What specific change would
+    fix it? Am I repeating the same approach?"
+  - If reflection produces a new approach → 1 more retry with fresh strategy
+  - If same approach → escalate to Tier 3
+
+Tier 3: KILL + REASSIGN (automatic)
+  - Kill the stuck agent, spawn fresh agent with clean context
+  - Fresh agent reads only: the error report + relevant .ctx/ pages
+  - No accumulated confusion from prior attempts
+  - If fresh agent also fails → escalate to Tier 4
+
+Tier 4: HUMAN ESCALATION (manual)
+  - Report "sync blocked: [reason]" with:
+    - What was attempted (all tiers)
+    - Which files/pages are affected
+    - Suggested manual fix
+  - Partial sync results are preserved (completed phases committed)
+  - Human can resume from the blocked phase after fixing
+```
+
+**Idle detection**: If no new page created/updated in 5 consecutive retries, skip to Tier 3 immediately — the agent is looping without progress.
+
+**Budget pause**: At 85% of per-sync token budget, auto-pause and notify human. Prevents runaway costs from stuck loops.
+
+**Partial sync recovery**: Phases 1-2 results are committed independently. If Phase 3 (VERIFY) blocks, the generated pages still exist — only verification status is incomplete. The next sync can resume from Phase 3 without re-running extraction and generation.
 
 ---
 

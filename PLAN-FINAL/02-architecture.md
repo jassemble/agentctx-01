@@ -104,6 +104,15 @@ related_templates:
 
 **Token budgets**: protocol.md < 500t, routing.md < 400t, SKILL.md < 500 lines, wiki pages < 30K tokens. Lint enforces these.
 
+**Relationship to .ctx/ (Code Brain)**: The Wiki Layer is framework-level methodology knowledge that **ships with the agentctx-sdlc framework** — it contains SDLC concepts, research, and methodology pages. It is NOT built per-project. The `.ctx/` Code Brain (Layer 4 below) is project-specific knowledge built by `brain init`. They serve different purposes:
+
+| Layer | What | Scope | Built when |
+|---|---|---|---|
+| Wiki Layer (`agentctx-sdlc/wiki/`) | SDLC methodology, research, patterns | Framework-wide, shared across all projects | Ships with the framework |
+| Code Brain (`.ctx/`) | Modules, entities, decisions, concepts for THIS project | Project-specific | `brain init` per project |
+
+The implementation plan (see [[06-implementation]]) focuses on building `.ctx/` because that's what gets created per-project. The wiki layer is authored content that ships as part of the framework distribution.
+
 ## Layer 3: Skills Layer (Executable Behavior)
 
 ```
@@ -786,9 +795,37 @@ Skills activate **implicitly** — users never type "use the react skill." The r
 **Key principle**: The system sees the user editing a `.tsx` file and loads React conventions automatically via PostToolUse. It sees "write a PRD" in the prompt and activates the requirements skill via UserPromptSubmit. Slash commands exist only as escape hatches for when implicit routing picks the wrong skill — they are not the primary activation path.
 
 **How routing works at runtime**:
-1. `SessionStart` → read `.ctx/skills/manifest.json` → pre-load stack-relevant skill references into session context
-2. `UserPromptSubmit` → scan prompt against all installed skills' `trigger_phrases` → set active skill for this interaction
-3. `PostToolUse` → match edited/read file path against installed skills' `paths` globs → inject matched skill's conventions as breadcrumb context
+1. `SessionStart` → read `.ctx/skills/manifest.json` + all installed `SKILL.md` frontmatter → build in-memory routing table: `{phrase → skill path}` for trigger_phrases, `{glob → skill path}` for paths fields. This is built once per session, not per prompt
+2. `UserPromptSubmit` → case-insensitive substring scan of prompt against routing table's trigger_phrases → set active skill for this interaction. Three trigger types (from agentskills.io research):
+   - **Domain jargon** (exact): "LCP", "WCAG", "prisma" → routes unambiguously
+   - **Intent-based** (action verbs): "write tests", "deploy to" → matches action + context
+   - **Low-jargon entry** (broad): "quality review", "best practices" → catches non-specialists
+3. `PostToolUse` → match edited/read file path against routing table's `paths` globs → inject matched skill's conventions as breadcrumb context
 4. If multiple signals fire, File context (most specific) wins over Intent match, which wins over Stack context (most general)
+
+**Multi-skill conflict resolution** (when multiple skills match within the same signal tier):
+- **Same-tier tiebreaker**: Use surrounding context to disambiguate. "Optimize this React component" matches both performance and react skills — but the file context (`.tsx`) resolves to react, and "optimize" resolves to performance. Both load, because progressive disclosure keeps references small
+- **When still ambiguous**: Load all matched skills' references. Skills are designed for progressive disclosure (SKILL.md < 500 lines, references/ loaded on demand), so loading 2-3 skills' conventions costs ~1-2K extra tokens — acceptable overhead vs. guessing wrong
+- **User correction tracking**: If a user explicitly invokes a slash command after implicit routing missed, log the correction. After N corrections for the same pattern, suggest a trigger_phrase update (skill atrophy detection)
+
+### Migration & Adoption Path
+
+`brain init` is **additive** — it creates `.ctx/` as a new namespace and never modifies existing project configuration. This enables incremental adoption for projects with existing context setups:
+
+**Coexistence guarantees**:
+- Existing `.agentctx/` directories are untouched — `.ctx/` is a separate namespace
+- Existing `CLAUDE.md` files are respected and never overwritten. `brain init` adds a single line to CLAUDE.md pointing to `.ctx/protocol.md` (or creates a new CLAUDE.md if none exists)
+- Existing `.cursorrules`, `.github/copilot-instructions.md`, etc. are preserved — `brain init` doesn't modify tool-specific config files unless explicitly requested via `agentctx` multi-tool output
+
+**Progressive adoption** (from guardrails-hierarchy research: "start with warnings, then escalate to blocks"):
+1. **Start**: `brain init` — scaffold `.ctx/`, run extraction, detect skills. Zero hooks, zero automation. The brain exists but is passive
+2. **Add hooks gradually**: Enable SessionStart first (load context). Then PostToolUse (breadcrumbs). Then UserPromptSubmit (skill routing). Each hook is independently useful
+3. **Enable skill routing**: Once hooks are stable, the routing engine activates implicitly. No configuration change needed — hooks already consult `.ctx/skills/`
+4. **Full automation**: Enable SessionEnd persistence, `/brain-sync` on commit. The brain is now self-maintaining
+
+**Non-breaking installation** (learned from compound-product's install.sh pattern):
+- `brain init` checks for existing config before creating: "Config file already exists, skipping..."
+- All brain files live inside `.ctx/` — no files added to project root except the CLAUDE.md pointer
+- `.ctx/` can be added to `.gitignore` during evaluation without affecting the project
 
 See also: [[03-agents]] for agent roles, [[04-memory-and-lifecycle]] for memory model and hooks, [[06-implementation]] for the task breakdown.

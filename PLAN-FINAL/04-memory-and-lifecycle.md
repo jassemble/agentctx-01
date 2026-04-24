@@ -186,12 +186,18 @@ From context bloat + pink elephant problem research:
 
 1. **Progress log consolidation**: See episodic/semantic separation above. Log entries promoted every 10 syncs. Decision consolidation every 10 decisions.
 
-2. **Token budgets per page**:
+2. **Token budgets per page** (with overflow handling):
    - routing.md < 400 tokens
    - protocol.md < 500 tokens
    - decisions.md summary < 3K tokens (consolidate when it grows beyond)
    - Individual pages < 30K tokens
    - Lint enforces these (see [[07-skill-verifier-rubrics]])
+
+   **When a page exceeds its budget** (the overflow strategy — not just "lint errors"):
+   1. **Split by responsibility cluster**: If an entity page grows beyond 30K (e.g., a god node with 50+ edges), split into sub-pages by community cluster. The original page becomes a summary with links: `[[entity:auth-service-core]]`, `[[entity:auth-service-integrations]]`
+   2. **Summarize-and-link**: Replace verbose sections with one-line summaries pointing to detail pages. The Cisco 193K-token API doc lesson: chunk by resource/endpoint, not by product
+   3. **Archive older sections**: Move historical content (old log entries, superseded patterns) to `archive/` — keep only the active state in the main page
+   4. **Progressive disclosure enforcement**: If a page still exceeds budget after splitting, the lint report flags it as ERROR with a suggested split point (the largest section)
 
 3. **Token surfacing in index.md**: Each entry shows token count so agents can make context-budget decisions:
    ```
@@ -200,5 +206,20 @@ From context bloat + pink elephant problem research:
    ```
 
 4. **Archival strategy**: Superseded concept pages and decisions move to `archive/YYYY-MM/` instead of deletion. Original remains. Index entry marked `[Superseded YYYY-MM-DD]`.
+
+5. **System observability** (brain health metrics):
+
+   The productivity paradox (METR RCT: 19% slower while believing 20% faster) means we cannot trust subjective impressions of whether the brain is helping. `log.md` structured entries track measurable system health:
+
+   | Metric | Where Tracked | Why |
+   |---|---|---|
+   | Sync duration (ms) | `log.md` per-sync entry | Trending up = pages growing too large or graph too complex |
+   | Sync pass/fail rate | `log.md` per-sync entry | Failing syncs = verifier catching real issues or system is brittle |
+   | Skill routing hit rate | `log.md` per-session | Did the right skill activate? Track user corrections (explicit slash command after implicit miss) |
+   | Token cost per sync | `log.md` per-sync entry | Trending up = context bloat or extraction scope creep |
+   | Pages over budget | `status.md` overflow count | Any non-zero = overflow strategy not keeping up |
+   | Verification time (human) | `log.md` per-session | Time from "sync complete" to human marking VERIFIED — the real productivity metric |
+
+   These metrics feed the self-learning loop: if sync duration trends up, the consolidation agent investigates why. If skill routing hit rate drops, trigger phrases need updating (skill atrophy).
 
 See also: [[02-architecture]] for the directory structure, [[05-guardrails-and-constraints]] for token budget enforcement, [[09-decision-tracking-and-self-learning]] for the detailed decision capture flow.
