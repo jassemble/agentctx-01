@@ -1,0 +1,52 @@
+# agentctx Code Brain
+
+> A project-level knowledge brain for AI coding agents.
+
+## Capabilities
+
+- Knowledge graph extraction from codebases (25 languages via Tree-sitter)
+- Governed wiki pages: modules, entities, concepts, decisions
+- Lifecycle hooks: SessionStart, PostToolUse, UserPromptSubmit, Stop, SessionEnd
+- Skill routing: implicit activation via file context, intent match, stack detection
+- 4-phase sync pipeline: EXTRACT -> UPDATE -> VERIFY -> COMMIT
+- 14-point lint verification with swappable rubrics
+- Decision tracking with self-learning loop
+- Token budgets: protocol.md < 500t, routing.md < 400t, pages < 30K
+
+## Entry Points
+
+- `.ctx/protocol.md` — Start here. Core principles + navigation pointers.
+- `.ctx/routing.md` — Keyword to page routing.
+- `.ctx/index.md` — Full page catalog with token counts.
+
+## Skills
+
+### Core (always installed)
+- `skills/requirements/SKILL.md` — PRD generation with boolean ACs
+- `skills/design/SKILL.md` — Architecture docs and ADRs
+- `skills/implementation/SKILL.md` — TDD with atomic commits
+- `skills/testing/SKILL.md` — Test plans and coverage
+- `skills/deployment/SKILL.md` — Safe deployment with rollback
+- `skills/maintenance/SKILL.md` — Bug fixes and tech debt
+
+### Detected (auto-installed by stack)
+- `skills/react/SKILL.md` — React conventions and patterns
+- `skills/typescript/SKILL.md` — TypeScript type safety
+- `skills/python/SKILL.md` — Python conventions
+- `skills/go/SKILL.md` — Go error handling and testing
+- `skills/data-modeling/SKILL.md` — Prisma and schema design
+- `skills/security/SKILL.md` — Secret management and OWASP
+
+## Commands
+
+- `bash brain-init.sh` — Initialize .ctx/ scaffold + detect skills
+- `bash scripts/sync/run-sync.sh` — Full sync pipeline
+- `bash scripts/sync/phase3-verify.sh` — Lint audit (read-only)
+- `brain serve .ctx/graph/graph.json` — Start MCP query server
+
+## Graph Query API (MCP)
+
+- `query_graph(query, mode=bfs|dfs)` — Traversal with token budget
+- `god_nodes()` — Highest-degree abstractions
+- `get_neighbors(node)` — Immediate connections
+- `shortest_path(from, to)` — Relationship trace

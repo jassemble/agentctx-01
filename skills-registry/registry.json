@@ -1,0 +1,53 @@
+{
+  "version": "1.0",
+  "skills": {
+    "core/requirements": { "tier": "core", "detect": "always" },
+    "core/design": { "tier": "core", "detect": "always" },
+    "core/implementation": { "tier": "core", "detect": "always" },
+    "core/testing": { "tier": "core", "detect": "always" },
+    "core/deployment": { "tier": "core", "detect": "always" },
+    "core/maintenance": { "tier": "core", "detect": "always" },
+    "detected/react": {
+      "tier": "detected",
+      "detect": [
+        { "file": "package.json", "contains": "\"react\"" }
+      ],
+      "also_installs": ["detected/typescript"]
+    },
+    "detected/typescript": {
+      "tier": "detected",
+      "detect": [
+        { "file_exists": "tsconfig.json" }
+      ]
+    },
+    "detected/python": {
+      "tier": "detected",
+      "detect": [
+        { "file_exists": "requirements.txt" },
+        { "file_exists": "pyproject.toml" }
+      ]
+    },
+    "detected/go": {
+      "tier": "detected",
+      "detect": [
+        { "file_exists": "go.mod" }
+      ]
+    },
+    "detected/data-modeling": {
+      "tier": "detected",
+      "detect": [
+        { "file_exists": "prisma/schema.prisma" }
+      ]
+    },
+    "detected/security": {
+      "tier": "detected",
+      "detect": [
+        { "file_exists": ".env" },
+        { "file_exists": ".env.example" }
+      ]
+    },
+    "available/kubernetes": { "tier": "available", "detect": "manual" },
+    "available/graphql": { "tier": "available", "detect": "manual" },
+    "available/mobile": { "tier": "available", "detect": "manual" }
+  }
+}

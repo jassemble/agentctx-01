@@ -13,6 +13,7 @@
 | 7 | [07-skill-verifier-rubrics](07-skill-verifier-rubrics.md) | Lint checklist, skill rubrics, boolean pass/fail, severity grouping |
 | 8 | [08-anti-patterns](08-anti-patterns.md) | What we're NOT building and why — research-backed constraints |
 | 9 | [09-decision-tracking-and-learning](09-decision-tracking-and-learning.md) | Decision capture → consolidating → feeding forward → agent self-improves over time |
+| 10 | [10-implementation-tasks](10-implementation-tasks.md) | **38 atomic tasks across 7 phases** — Claude-executable, sequential, with dependencies and boolean AC |
 
 ## Source Documents Consolidated
 
@@ -32,5 +33,6 @@ This plan consolidates:
 
 - Start with **01** for the problem/context
 - **02-05** are the design contract — architecture, agents, memory, guardrails
-- **06** is what to build and when (task breakdown)
+- **06** is the high-level phase overview (what to build)
 - **07-08** are quality gates and constraints (rubrics, anti-patterns)
+- **10** is the **executable task list** — start here when building. 38 atomic tasks with dependencies, inputs, outputs, and boolean acceptance criteria
